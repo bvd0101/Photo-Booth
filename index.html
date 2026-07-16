@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Photo Booth by Vandiep</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Fredoka:wght@400;600&family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root { --primary: #ff8fab; --primary-dark: #fb6f92; --secondary: #80ed99; --bg-color: #fff0f3; --text: #590d22; --card-bg: rgba(255, 255, 255, 0.95); }
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Baloo 2', cursive; background-color: var(--bg-color); background-image: linear-gradient(45deg, #ffe5ec 25%, transparent 25%), linear-gradient(-45deg, #ffe5ec 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ffe5ec 75%), linear-gradient(-45deg, transparent 75%, #ffe5ec 75%); background-size: 40px 40px; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; color: var(--text); }
+        
+        #decor-layer { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+        .float-icon { position: absolute; font-size: 30px; animation: floatUp linear infinite; opacity: 0.6; }
+        @keyframes floatUp { 0% {transform: translateY(110vh) rotate(0deg);} 100% {transform: translateY(-10vh) rotate(360deg);} }
+
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; position: absolute; top: 0; left: 0; z-index: 10; animation: popIn 0.4s ease-out; }
+        @keyframes popIn { 0% {transform: scale(0.95); opacity:0;} 100% {transform: scale(1); opacity:1;} }
+
+        button { font-family: 'Fredoka', sans-serif; background: linear-gradient(to bottom, #ff9a9e, #ff6b81); color: white; border: 4px solid #fff; padding: 12px 40px; font-size: 20px; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 0px #e0566e, 0 10px 20px rgba(0,0,0,0.1); transition: all 0.1s; display: inline-flex; align-items: center; gap: 8px; }
+        button:active { transform: translateY(4px); box-shadow: 0 2px 0px #e0566e; }
+        button.secondary { background: #fff; color: var(--primary-dark); border: 3px solid var(--primary-dark); box-shadow: 0 4px 0px #ffccd5; }
+        button.secondary:active { transform: translateY(4px); box-shadow: none; }
+
+        .music-bar { display: flex; align-items: center; gap: 15px; background: #fff; padding: 10px 20px; border-radius: 50px; border: 3px solid #ffc2d1; margin-bottom: 15px; width: 100%; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .disk-spin { width: 45px; height: 45px; border-radius: 50%; flex-shrink: 0; background: radial-gradient(circle, #333 40%, #111 100%); border: 2px solid #fff; animation: spin 3s linear infinite; animation-play-state: paused; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .disk-spin::after { content:''; width:12px; height:12px; background:var(--primary); border-radius:50%; }
+        .disk-spin.playing { animation-play-state: running; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .song-info { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .song-name { font-size: 14px; font-weight: 800; color: var(--primary-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-controls { display: flex; gap: 12px; margin-top: 2px; }
+        .m-btn { width: 32px !important; height: 32px !important; border-radius: 50% !important; padding: 0 !important; background: #fff !important; border: 2px solid var(--primary) !important; color: var(--primary) !important; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 0 #ffc2d1 !important; cursor: pointer; font-size: 12px !important; transition: all 0.1s; margin: 0 !important; }
+        .m-btn:active { transform: translateY(3px) !important; box-shadow: none !important; } .m-btn:hover { background: #fff0f3 !important; }
+
+        .kawaii-card { background: var(--card-bg); backdrop-filter: blur(10px); border-radius: 35px; border: 4px solid #fff; box-shadow: 0 15px 35px rgba(255, 143, 171, 0.2); padding: 30px; text-align: center; }
+        .logo-main { font-family: 'Fredoka', sans-serif; font-size: 5rem; line-height: 1; color: #fff; text-shadow: 4px 4px 0px #ffb3c6, 8px 8px 0px #ff8fab; margin: 0; animation: bounceLogo 2s infinite ease-in-out; }
+        @keyframes bounceLogo { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-10px);} }
+        .author-sign { font-family: 'Pacifico', cursive; font-size: 1.5rem; color: #fb6f92; margin-bottom: 30px; transform: rotate(-3deg); }
+
+        .layout-split { display: flex; width: 95%; height: 90%; gap: 20px; z-index: 2; }
+        .col-L { flex: 1; display: flex; flex-direction: column; gap: 15px; } .col-R { flex: 2; display: flex; flex-direction: column; gap: 15px; }
+        .panel { background: rgba(255,255,255,0.7); border-radius: 20px; padding: 15px; border: 2px solid white; display: flex; flex-direction: column; height: 100%; }
+        
+        .cam-preview { flex: 1; border-radius: 15px; overflow: hidden; background: #000; border: 3px solid #ffc2d1; position: relative;}
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+
+        #noise-overlay {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            pointer-events: none; opacity: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+            mix-blend-mode: overlay;
+            transition: opacity 0.3s;
+        }
+
+        .frame-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; overflow-y: auto; flex: 1; padding: 5px; }
+        .frame-thumb { position: relative; aspect-ratio: 1/3.5; background: #fff; border-radius: 10px; cursor: pointer; border: 3px solid transparent; transition: 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        .frame-thumb:hover { transform: translateY(-3px); } .frame-thumb.active { border-color: var(--primary-dark); transform: scale(1.05); z-index: 2; box-shadow: 0 5px 15px rgba(255, 107, 129, 0.3); }
+        .frame-thumb img { width: 100%; height: 100%; object-fit: contain; }
+
+        .capture-wrap { display: flex; width: 100%; height: 100%; padding: 10px; gap: 20px; z-index: 5; }
+        .main-cam { flex: 2; position: relative; border-radius: 30px; overflow: hidden; border: 8px solid white; box-shadow: 0 10px 30px rgba(0,0,0,0.1); background: #000; }
+        
+        #main-noise {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            pointer-events: none; opacity: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+            mix-blend-mode: overlay;
+        }
+
+        .preview-col { flex: 1; max-width: 320px; } .strip-res { height: 100%; width: 100%; background: #fff; border-radius: 20px; border: 4px dashed #ff8fab; display: flex; align-items: center; justify-content: center; padding: 5px; }
+        #live-img { height: 100%; object-fit: contain; border-radius: 10px; }
+        .control-dock { position: absolute; bottom: 20px; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+        .control-dock > * { pointer-events: auto; }
+        
+        .shutter-btn { width: 90px; height: 90px; border-radius: 50%; background: white; border: 8px solid var(--primary-dark); box-shadow: 0 0 0 5px white, 0 10px 20px rgba(0,0,0,0.2); cursor: pointer; transition: 0.1s; display: flex; align-items: center; justify-content: center;}
+        .shutter-btn.stop-mode { background: #ff4d4d; border-color: #ff0000; }
+        .shutter-btn i { font-size: 30px; color: var(--primary-dark); }
+        .shutter-btn.stop-mode i { color: white; }
+
+        .res-container { background: white; padding: 15px 25px; border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.15); text-align: center; border: 6px solid #ffc8dd; width: 95%; max-width: 450px; display: flex; flex-direction: column; align-items: center; position: relative; max-height: 95vh; overflow-y: auto;}
+        #final-img { width: auto; height: auto; max-width: 100%; max-height: 40vh; border-radius: 10px; border: 2px solid #eee; object-fit: contain; margin-bottom: 10px; }
+        
+        .qr-box { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            background: #fff5f8; 
+            padding: 10px; 
+            border-radius: 15px; 
+            border: 2px dashed #ff8fab; 
+            margin-bottom: 10px; 
+            width: 100%; 
+            height: auto; 
+            min-height: auto; 
+        }
+        #qr-result {
+            display: none; 
+            flex-direction: column; 
+            align-items: center; 
+            width: 100%;
+        }
+        #qr { 
+            margin-bottom: 5px; 
+            background: white; 
+            padding: 5px; 
+            border: 1px solid #eee; 
+            border-radius: 5px;
+        }
+        #qr img { display: block; }
+
+        .action-row { display: flex; gap: 10px; width: 100%; justify-content: center; margin-bottom: 20px; }
+
+        #flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 999; opacity: 0; pointer-events: none; transition: opacity 1.5s ease-out; }
+        #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff0f3; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        .ribbon { position: absolute; top: -5px; right: -5px; background: #ffbd00; color: white; font-size: 9px; padding: 3px 8px; border-radius: 8px; font-weight: bold; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .filter-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 5px; margin-top: 10px; }
+        .filter-chip { background: white; border: 2px solid #ffc2d1; padding: 6px 12px; border-radius: 15px; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+        .filter-chip.active { background: var(--primary); color: white; border-color: var(--primary-dark); }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #ff8fab; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        
+        .settings-bar { margin-top: 15px; display: flex; gap: 10px; align-items: center; }
+        .timer-select-box { background: rgba(255, 255, 255, 0.95); padding: 8px 15px; border-radius: 25px; display: flex; align-items: center; gap: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); pointer-events: auto; }
+        .timer-select-box select { font-family: 'Baloo 2', sans-serif; font-size: 14px; font-weight: bold; color: var(--primary-dark); border: none; background: transparent; outline: none; cursor: pointer; }
+        
+        .beauty-box { background: rgba(255, 255, 255, 0.95); padding: 8px 15px; border-radius: 25px; display: flex; align-items: center; gap: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); pointer-events: auto; cursor: pointer; font-size: 14px; font-weight: bold; color: var(--primary-dark); transition: 0.2s; }
+        .beauty-box.active { background: var(--primary); color: white; }
+        .beauty-box input { display: none; }
+
+        .contact-area { margin-bottom: 10px; width: 100%; text-align: center; }
+        .contact-buttons { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .icon-btn { 
+            padding: 8px 12px; border-radius: 20px; text-decoration: none; font-size: 12px; font-family: 'Fredoka', sans-serif;
+            font-weight: bold; border: 2px solid white; box-shadow: 0 3px 6px rgba(0,0,0,0.1); cursor: pointer; 
+            display: flex; align-items: center; gap: 5px; transition: transform 0.1s; color: white !important;
+        }
+        .icon-btn:active { transform: translateY(2px); box-shadow: none; }
+        
+        .fb-btn { background: #1877F2; }
+        .mail-btn { background: #EA4335; }
+        .donate-btn { background: #ffbd00; }
+
+        #donate-box { 
+            background: #fff; padding: 15px 10px; border-radius: 15px; border: 2px dashed #ffbd00; 
+            margin-top: 5px; animation: popIn 0.3s; display: none;
+        }
+        .bank-info { color: var(--text); margin: 0 0 8px 0; font-size: 14px; font-weight: bold; line-height: 1.4; }
+        .bank-hl { color: #d63384; font-size: 16px; font-weight: 800; }
+        .bank-name { text-transform: uppercase; color: #590d22; font-size: 14px; display: block; margin-top: 2px; }
+        .bank-qr-img { width: 140px; height: auto; border-radius: 8px; border: 1px solid #ddd; display: block; margin: 0 auto; }
+
+        @media(max-width: 900px){ .layout-split { flex-direction: column; } .col-L { flex: 0 0 auto; height: auto; } .cam-preview { height: 200px; } .capture-wrap { flex-direction: column; } .preview-col { display: none; } }
+    </style>
+</head>
+<body>
+
+    <script>
+        const GOOGLE_SCRIPT_URL = "https://photobooth.vandiepusa.workers.dev"; 
+    </script>
+
+    <audio id="bg-music"></audio>
+    <audio id="sfx-click" src="sounds/click.mp3"></audio>
+    <audio id="sfx-beep" src="sounds/beep.mp3"></audio>
+    <audio id="sfx-snap" src="sounds/snap.mp3"></audio>
+    <audio id="sfx-result" src="sounds/result.mp3"></audio> 
+
+    <div id="decor-layer">
+        <div class="float-icon" style="left: 10%; animation-duration: 15s;">🌸</div>
+        <div class="float-icon" style="left: 80%; animation-duration: 22s;">🎀</div>
+        <div class="float-icon" style="left: 50%; animation-duration: 25s;">💖</div>
+    </div>
+
+    <div id="flash"></div>
+    <div id="loader"><div style="font-size:60px; animation:bounce 1s infinite">🐻</div><h3>Loading...</h3></div>
+
+    <div id="s-home" class="screen" style="display: flex;">
+        <div class="kawaii-card" style="padding: 40px 60px;">
+            <h1 class="logo-main">Photo<br>Booth</h1>
+            <div class="author-sign">© by Rapptor</div>
+            <button onclick="startApp()">BẮT ĐẦU CHỤP</button>
+        </div>
+    </div>
+
+    <div id="s-select" class="screen">
+        <div class="layout-split">
+            <div class="col-L">
+                <div class="music-bar">
+                    <div class="disk-spin" id="vinyl">🎵</div>
+                    <div class="song-info">
+                        <div class="song-name" id="song-title">Music</div>
+                        <div class="player-controls">
+                            <button class="m-btn" onclick="prevSong()"><i class="fas fa-backward"></i></button>
+                            <button class="m-btn" onclick="toggleMusic()"><i class="fas fa-pause" id="play-icon"></i></button>
+                            <button class="m-btn" onclick="nextSong()"><i class="fas fa-forward"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h3>🎨 Màu xinh</h3>
+                    <div class="cam-preview">
+                        <video id="preview-vid" autoplay playsinline muted></video>
+                        <div id="noise-overlay"></div>
+                    </div>
+                    <div id="filters" class="filter-scroll"></div>
+                </div>
+            </div>
+            <div class="col-R">
+                <div class="panel">
+                    <h3>🖼️ Chọn khung</h3>
+                    <div id="frames" class="frame-grid"></div>
+                    <button onclick="analyzeAndGo()" style="width:100%; margin-top:10px;">TIẾP TỤC ➜</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="s-capture" class="screen">
+        <div class="capture-wrap">
+            <div class="main-cam">
+                <video id="main-vid" autoplay playsinline muted></video>
+                <div id="main-noise"></div>
+                <div id="cnt" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:150px; color:white; font-weight:900; display:none; text-shadow:0 0 30px #ff4d6d;">3</div>
+                
+                <div class="control-dock">
+                    <div id="stat" style="background:rgba(255,255,255,0.9); padding:8px 25px; border-radius:20px; font-weight:bold; color:var(--primary-dark); margin-bottom:20px;">Ảnh: 0/4</div>
+                    <div id="btn-s"><div class="shutter-btn" id="shutter-icon" onclick="handleShutter()"></div></div>
+                    <div id="btn-e" style="display:none; text-align: center;">
+                        <button onclick="finish()">XEM KẾT QUẢ</button>
+                        <button class="secondary" onclick="reset()">🔄 CHỤP LẠI</button>
+                    </div>
+
+                    <div class="settings-bar">
+                        <div class="timer-select-box">
+                            <i class="fas fa-clock timer-icon"></i>
+                            <select id="timer-select" onchange="updateTimer()">
+                                <option value="manual" selected>Thủ công</option>
+                                <option value="5">Auto (5s)</option>
+                                <option value="7">Auto (7s)</option>
+                                <option value="10">Auto (10s)</option>
+                            </select>
+                        </div>
+                        <label class="beauty-box" id="beauty-lbl">
+                            <input type="checkbox" id="chk-beauty" onchange="toggleBeauty()"> ✨ Mịn da
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="preview-col">
+                <div class="panel">
+                    <div class="strip-res"><img id="live-img"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="s-result" class="screen">
+        <div class="res-container">
+            <h2 style="color:var(--primary-dark); margin:0 0 5px 0; font-size: 24px;">🎉 10 ĐỈM KHÔNG CÓ NHƯNG[! 🎉</h2>
+            <img id="final-img">
+            
+            <div class="qr-box">
+                <div id="loading-upload" style="display:flex; flex-direction:column; align-items:center;">
+                    <div class="spinner"></div>
+                    <div style="font-size:12px; color:#999;">Đang tạo link Drive...</div>
+                </div>
+                <div id="qr-result" style="display:none;">
+                    <div id="qr"></div>
+                    <div style="font-size:13px; font-weight:bold; color:#ff8fab; margin-top:5px;">Quét để tải ảnh ☁️</div>
+                    <div style="font-size:10px; color:#aaa;">(Link Google Drive tự hủy sau 5p)</div>
+                </div>
+                <div id="error-upload" style="display:none; color:red; font-size:12px;">Lỗi kết nối Server!</div>
+            </div>
+
+            <div class="contact-area">
+                <div class="contact-buttons">
+                    <a href="https://www.facebook.com/vandiep101" target="_blank" class="icon-btn fb-btn">
+                        <i class="fab fa-facebook"></i> Facebook
+                    </a>
+                    <a href="mailto:bvdiep205@gmail.com" class="icon-btn mail-btn">
+                        <i class="fas fa-envelope"></i> Email
+                    </a>
+                    <button class="icon-btn donate-btn" onclick="toggleDonate()">
+                        <i class="fas fa-heart"></i> Donate
+                    </button>
+                </div>
+
+                <div id="donate-box">
+                    <p class="bank-info">
+                        Techcombank<br>
+                        <span class="bank-hl">9868633333</span><br>
+                        <span class="bank-name">BUI VAN DIEP</span>
+                    </p>
+                    <img src="bank-qr.jpg" class="bank-qr-img" onerror="this.src='https://placehold.co/150x150?text=QR+Bank'">
+                </div>
+            </div>
+
+            <div class="action-row">
+                <a id="dl-link" download><button style="font-size: 16px; padding: 10px 25px;">⬇️ TẢI ẢNH</button></a>
+                <button class="secondary" onclick="goHome()" style="font-size: 16px; padding: 10px 25px;">🏠 HOME</button>
+            </div>
+            
+        </div>
+    </div>
+
+    <canvas id="cvs" style="display: none;"></canvas>
+
+    <script>
+        const PLAYLIST = [
+            { title: "Bài hát số 1", src: "music/song1.mp3" }, { title: "Bài hát số 2", src: "music/song2.mp3" },
+            { title: "Bài hát số 3", src: "music/song3.mp3" }, { title: "Bài hát số 4", src: "music/song4.mp3" },
+            { title: "Bài hát số 5", src: "music/song5.mp3" }, { title: "Bài hát số 6", src: "music/song6.mp3" },
+            { title: "Bài hát số 7", src: "music/song7.mp3" }, { title: "Bài hát số 8", src: "music/song8.mp3" },
+            { title: "Bài hát số 9", src: "music/song9.mp3" }, { title: "Bài hát số 10", src: "music/song10.mp3" },
+            { title: "Bài hát số 11", src: "music/song11.mp3" }, { title: "Bài hát số 12", src: "music/song12.mp3" },
+            { title: "Bài hát số 13", src: "music/song13.mp3" }, { title: "Bài hát số 14", src: "music/song14.mp3" },
+            { title: "Bài hát số 15", src: "music/song15.mp3" }, { title: "Bài hát số 16", src: "music/song16.mp3" },
+            { title: "Bài hát số 17", src: "music/song17.mp3" }, { title: "Bài hát số 18", src: "music/song18.mp3" },
+            { title: "Bài hát số 19", src: "music/song19.mp3" }, { title: "Bài hát số 20", src: "music/song20.mp3" },
+            { title: "Bài hát số 21", src: "music/song21.mp3" }
+        ];
+
+        const ZOOM = 1.05;
+        let stream, photos=[], selFrame='assets/hot.png', selFilter='none', frameImg=new Image(), shooting=false;
+        let detectedHoles = [], currentSongIdx = 0, isPlaying = false;
+        let isManualMode = true, autoDelay = 5, isBeautyOn = false, isRunningAuto = false;
+
+        const $ = id => document.getElementById(id);
+        const bgMusic = $('bg-music');
+        const vPre=$('preview-vid'), vMain=$('main-vid'), cvs=$('cvs'), ctx=cvs.getContext('2d'), fl=$('flash');
+
+        window.onload = () => { setTimeout(()=>$('loader').style.display='none', 800); }
+
+        function playSfx(type) {
+            const audio = $(`sfx-${type}`);
+            if(audio) { audio.currentTime = 0; audio.play().catch(e=>{}); }
+        }
+
+        function toggleDonate() {
+            playSfx('click');
+            const box = $('donate-box');
+            if (box.style.display === 'block') {
+                box.style.display = 'none';
+            } else {
+                box.style.display = 'block';
+                box.scrollIntoView({behavior: "smooth", block: "nearest"});
+            }
+        }
+
+        function loadSong(index) {
+            if(index >= PLAYLIST.length) index = 0; if(index < 0) index = PLAYLIST.length - 1;
+            currentSongIdx = index; bgMusic.src = PLAYLIST[currentSongIdx].src; $('song-title').innerText = PLAYLIST[currentSongIdx].title;
+            if(isPlaying) { bgMusic.play(); $('vinyl').classList.add('playing'); $('play-icon').className = 'fas fa-pause'; }
+        }
+        bgMusic.addEventListener('ended', () => nextSong());
+
+        function toggleMusic() {
+            if(bgMusic.paused) { bgMusic.play(); isPlaying = true; $('vinyl').classList.add('playing'); $('play-icon').className = 'fas fa-pause'; }
+            else { bgMusic.pause(); isPlaying = false; $('vinyl').classList.remove('playing'); $('play-icon').className = 'fas fa-play'; }
+            playSfx('click');
+        }
+        function nextSong() { loadSong(currentSongIdx + 1); playSfx('click'); }
+        function prevSong() { loadSong(currentSongIdx - 1); playSfx('click'); }
+
+        function updateTimer() {
+            let val = $('timer-select').value;
+            if (val === 'manual') { isManualMode = true; } 
+            else { isManualMode = false; autoDelay = parseInt(val); }
+            playSfx('click');
+        }
+
+        function toggleBeauty() {
+            isBeautyOn = $('chk-beauty').checked;
+            if(isBeautyOn) {
+                $('beauty-lbl').classList.add('active');
+                $('noise-overlay').style.opacity = 0.3; 
+                $('main-noise').style.opacity = 0.3;
+            } else {
+                $('beauty-lbl').classList.remove('active');
+                $('noise-overlay').style.opacity = 0;
+                $('main-noise').style.opacity = 0;
+            }
+            playSfx('click');
+            updateFilters();
+        }
+
+        function updateFilters() {
+            let cssFilter = (selFilter === 'none' ? '' : selFilter);
+            if(isBeautyOn) cssFilter += ' brightness(1.1) contrast(0.9) saturate(1.05)';
+            vPre.style.filter = cssFilter;
+            vMain.style.filter = cssFilter;
+        }
+
+        async function startApp() {
+            playSfx('click'); 
+            if (!isPlaying) { isPlaying = true; loadSong(0); }
+            try {
+                if (!stream) {
+                    stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280}, height:{ideal:720}, facingMode:'user'}, audio:false});
+                    vPre.srcObject = stream; vMain.srcObject = stream; vPre.play();
+                }
+                buildUI(); show('s-select');
+            } catch(e) { alert("Lỗi Camera: "+e.message); }
+        }
+
+        function buildUI() {
+            const fs = [
+                {n:'✨ Gốc',v:'none'}, 
+                {n:'📸 Canon', v:'contrast(1.2) saturate(1.3) hue-rotate(-5deg) brightness(1.1)'}, 
+                {n:'🎞️ Vintage', v:'sepia(0.5) hue-rotate(-15deg) saturate(1.4) contrast(1.1) brightness(1.05)'},
+                {n:'🍑 Peach',v:'sepia(0.2) brightness(1.1)'}, 
+                {n:'🎞️ B&W',v:'grayscale(1) contrast(1.1)'},
+                {n:'☀️ Nắng',v:'brightness(1.1) sepia(0.3)'}
+            ];
+            
+            $('filters').innerHTML = '';
+            fs.forEach(f => {
+                let b=document.createElement('div'); b.className='filter-chip'; b.innerText=f.n;
+                b.onclick=()=>{ 
+                    playSfx('click'); 
+                    document.querySelectorAll('.filter-chip').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+                    selFilter=f.v; updateFilters();
+                };
+                $('filters').appendChild(b);
+            });
+
+            const box = $('frames'); box.innerHTML = '';
+            const add = (src, isHot) => {
+                let d=document.createElement('div'); d.className='frame-thumb';
+                let img=document.createElement('img'); img.crossOrigin="Anonymous"; img.loading="lazy"; img.src=src; img.onerror=()=>img.src='https://placehold.co/100x300?text=Err';
+                if(isHot) { d.innerHTML+=`<div class="ribbon">HOT 🔥</div>`; if(selFrame==='assets/hot.png') d.classList.add('active'); }
+                d.appendChild(img);
+                d.onclick=()=>{ playSfx('click'); document.querySelectorAll('.frame-thumb').forEach(x=>x.classList.remove('active')); d.classList.add('active'); selFrame=src; };
+                box.appendChild(d);
+            };
+            add('assets/hot.png', true);
+            for(let i=1; i<=43; i++) add(`assets/${i}.png`, false);
+        }
+
+        function getHoles(img) {
+            const w=img.width, h=img.height;
+            const t=document.createElement('canvas'); t.width=w; t.height=h;
+            const tc=t.getContext('2d'); tc.drawImage(img,0,0);
+            const d=tc.getImageData(0,0,w,h).data;
+            let holes=[], inH=false, sy=0;
+            for(let y=0; y<h; y+=5) {
+                let tr=false;
+                for(let x=w*0.2; x<w*0.8; x+=5) if(d[(y*w+Math.floor(x))*4+3]<50){tr=true;break;}
+                if(tr) { if(!inH) { inH=true; sy=y; } }
+                else if(inH) {
+                    inH=false; let hh=y-sy;
+                    if(hh>50) {
+                        let mx=w, Mx=0;
+                        for(let yy=sy; yy<y; yy+=10) for(let xx=0; xx<w; xx+=5) if(d[(yy*w+xx)*4+3]<50){ if(xx<mx)mx=xx; if(xx>Mx)Mx=xx; }
+                        holes.push({x:mx, y:sy, w:Mx-mx, h:hh});
+                    }
+                }
+            }
+            return holes;
+        }
+
+        async function analyzeAndGo() {
+            playSfx('click'); $('loader').style.display='flex'; photos=[]; detectedHoles=[];
+            frameImg=new Image(); frameImg.crossOrigin="Anonymous"; frameImg.src=selFrame;
+            frameImg.onload=()=>{
+                detectedHoles=getHoles(frameImg);
+                if(detectedHoles.length===0) detectedHoles=[{x:60,y:140,w:480,h:360},{x:60,y:550,w:480,h:360},{x:60,y:960,w:480,h:360},{x:60,y:1380,w:480,h:360}];
+                $('loader').style.display='none'; upd(); drw(); show('s-capture');
+                vMain.play().catch(()=>{});
+                isRunningAuto = false; updateShutterButton();
+            };
+            frameImg.onerror=()=>{alert("Lỗi tải khung!"); $('loader').style.display='none';}
+        }
+
+        function handleShutter() {
+            if (isRunningAuto) stopAutoSequence();
+            else shoot();
+        }
+
+        function updateShutterButton() {
+            const btn = $('shutter-icon');
+            if (isRunningAuto) {
+                btn.classList.add('stop-mode');
+                btn.innerHTML = '<i class="fas fa-stop"></i>';
+            } else {
+                btn.classList.remove('stop-mode');
+                btn.innerHTML = '';
+            }
+        }
+
+        function stopAutoSequence() {
+            isRunningAuto = false; shooting = false;
+            let id = window.setTimeout(function() {}, 0);
+            while (id--) { window.clearTimeout(id); window.clearInterval(id); }
+            $('cnt').style.display = 'none'; $('timer-select').disabled = false;
+            updateShutterButton(); playSfx('click');
+        }
+
+        function shoot() {
+            playSfx('click');
+            let max=Math.min(4, detectedHoles.length||4);
+            if(photos.length>=max) return;
+            
+            if(isManualMode) cd(3, snap);
+            else {
+                isRunningAuto = true; updateShutterButton();
+                $('timer-select').disabled = true; runAutoStep();
+            }
+        }
+
+        function runAutoStep() {
+            if (!isRunningAuto) return;
+            let max = Math.min(4, detectedHoles.length||4);
+            if(photos.length>=max) { stopAutoSequence(); return; }
+            cd(autoDelay, ()=>{ 
+                snap(); 
+                if(photos.length < max && isRunningAuto) setTimeout(runAutoStep, 2000); 
+                else stopAutoSequence();
+            });
+        }
+
+        function cd(n, cb) {
+            shooting=true; let c=n; $('cnt').style.display='block'; $('cnt').innerText=c;
+            let t=setInterval(()=>{ 
+                if(!shooting && isRunningAuto === false && !isManualMode) { clearInterval(t); $('cnt').style.display='none'; return; }
+                c--; if(c>0) { $('cnt').innerText=c; playSfx('beep'); } 
+                else { clearInterval(t); $('cnt').style.display='none'; cb(); shooting=false; } 
+            }, 1000);
+            playSfx('beep');
+        }
+
+        function addGrain(ctx, w, h) {
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const noise = (Math.random() - 0.5) * 30; 
+                data[i] = data[i] + noise;     
+                data[i+1] = data[i+1] + noise; 
+                data[i+2] = data[i+2] + noise; 
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        function snap() {
+            playSfx('snap');
+            fl.style.transition = 'none'; fl.style.opacity = 1;
+            setTimeout(() => {
+                try {
+                    let idx = photos.length;
+                    let h = detectedHoles[idx] || detectedHoles[0];
+                    let c = document.createElement('canvas'); c.width = h.w*ZOOM; c.height = h.h*ZOOM;
+                    let cx = c.getContext('2d');
+                    let vw = vMain.videoWidth, vh = vMain.videoHeight;
+                    let hR=h.w/h.h, vR=vw/vh, sw, sh, sx, sy;
+                    if(vR>hR) { sh=vh; sw=vh*hR; sx=(vw-sw)/2; sy=0; } else { sw=vw; sh=vw/hR; sx=0; sy=(vh-sh)/2; }
+                    
+                    cx.translate(c.width,0); cx.scale(-1,1); 
+                    
+                    let filterString = selFilter;
+                    if(isBeautyOn) filterString += ' blur(0.8px) brightness(1.15) contrast(0.95) saturate(1.05)';
+                    cx.filter = filterString;
+
+                    cx.drawImage(vMain, sx, sy, sw, sh, 0, 0, c.width, c.height);
+                    
+                    if(isBeautyOn) {
+                        cx.filter = 'none';
+                        addGrain(cx, c.width, c.height); 
+                    }
+
+                    photos.push(c);
+                    drw(); upd();
+                } catch(e){}
+                fl.style.transition = 'opacity 1.5s ease-out'; fl.style.opacity = 0;
+            }, 400);
+        }
+
+        function drw() {
+            const fw=frameImg.width||600, fh=frameImg.height||1800;
+            cvs.width=fw; cvs.height=fh;
+            ctx.fillStyle='#fff'; ctx.fillRect(0,0,fw,fh);
+            photos.forEach((p,i)=>{
+                if(detectedHoles[i]) {
+                    let h=detectedHoles[i];
+                    let dw=h.w*ZOOM, dh=h.h*ZOOM;
+                    ctx.drawImage(p, h.x-(dw-h.w)/2, h.y-(dh-h.h)/2, dw, dh);
+                }
+            });
+            if(frameImg.complete) ctx.drawImage(frameImg, 0, 0, fw, fh);
+            try{$('live-img').src=cvs.toDataURL('image/png');}catch(e){}
+        }
+
+        function upd() {
+            let max=detectedHoles.length||4; $('stat').innerText=`Ảnh: ${photos.length}/${max}`;
+            if(photos.length>=max) { $('btn-s').style.display='none'; $('btn-e').style.display='block'; $('timer-select').disabled=true; }
+            else { 
+                if(!isRunningAuto) $('btn-s').style.display='flex'; 
+                $('btn-e').style.display='none'; 
+            }
+        }
+
+        function finish() {
+            playSfx('result');
+            let dataUrl = cvs.toDataURL('image/png');
+            $('final-img').src = dataUrl; $('dl-link').href = dataUrl;
+            show('s-result');
+            $('loading-upload').style.display = 'flex'; $('qr-result').style.display = 'none'; $('error-upload').style.display = 'none';
+            $('donate-box').style.display = 'none';
+            
+            if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("DÁN_LINK")) { alert("Chưa dán Link Google Script!"); $('loading-upload').style.display = 'none'; return; }
+            let base64 = dataUrl.split(',')[1];
+            let filename = "PhotoBooth_" + Date.now() + "_" + Math.floor(Math.random() * 1000) + ".png";
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST", headers: { "Content-Type": "text/plain" }, 
+                body: JSON.stringify({ image: base64, filename: filename })
+            }).then(res => res.json()).then(data => {
+                if (data.result === 'success') {
+                    $('loading-upload').style.display = 'none'; $('qr-result').style.display = 'flex'; $('qr').innerHTML = '';
+                    new QRCode($('qr'), {text: data.url, width:90, height:90});
+                } else { throw new Error(data.message || "Unknown error"); }
+            }).catch(e => {
+                console.error(e); $('loading-upload').style.display = 'none'; $('error-upload').style.display = 'block'; $('error-upload').innerText = "Lỗi upload: " + e.message;
+            });
+        }
+
+        function resetToDefault() {
+            isManualMode = true; autoDelay = 5; isBeautyOn = false; isRunningAuto = false;
+            $('timer-select').value = 'manual'; $('timer-select').disabled = false;
+            $('chk-beauty').checked = false; $('beauty-lbl').classList.remove('active');
+            $('noise-overlay').style.opacity = 0; $('main-noise').style.opacity = 0;
+            updateShutterButton(); $('btn-s').style.display = 'flex'; $('btn-e').style.display = 'none';
+            updateFilters(); 
+            $('donate-box').style.display = 'none'; 
+        }
+
+        function goHome() {
+            playSfx('click');
+            photos = []; detectedHoles = [];
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            $('live-img').src = ""; $('final-img').src = "";
+            resetToDefault(); show('s-home');
+        }
+
+        function reset() { playSfx('click'); photos=[]; resetToDefault(); drw(); upd(); show('s-capture'); }
+        function show(id) { document.querySelectorAll('.screen').forEach(s=>s.style.display='none'); $(id).style.display='flex'; }
+    </script>
+</body>
+</html>
